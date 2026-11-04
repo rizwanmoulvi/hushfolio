@@ -4,11 +4,30 @@ const usd = (n) => (n == null ? '–' : `$${n.toFixed(2)}`);
 const tx = (id) => `<a href="https://testnet.zcashexplorer.app/transactions/${id}" target="_blank" rel="noopener">${id.slice(0, 10)}…</a>`;
 const signed = (n) => `<span class="${n >= 0 ? 'up' : 'down'}">${n >= 0 ? '+' : '−'}$${Math.abs(n).toFixed(2)}</span>`;
 
+// The public deployment serves a snapshot of real testnet data; actions that spend need a local wallet.
+const SNAPSHOT = window.HF_SNAPSHOT;
+const SNAPSHOT_POSTS = { disclose: 'disclose', audit: 'audit' };
+const READ_ONLY = 'This public demo is read-only: trading needs your own wallet and keys. Run Hushfolio locally (see the README).';
+
 async function api(path, body) {
+  if (SNAPSHOT) return snapshot(path, body);
   const res = await fetch(`/api/${path}`, body ? { method: 'POST', body: JSON.stringify(body) } : {});
   const data = await res.json();
   if (!res.ok) throw new Error(data.error);
   return data;
+}
+
+async function snapshot(path, body) {
+  const name = body ? SNAPSHOT_POSTS[path] : path;
+  if (!name) throw new Error(READ_ONLY);
+  return (await fetch(`${SNAPSHOT}${name.replace('/', '-')}.json`)).json();
+}
+
+if (SNAPSHOT) {
+  document.querySelector('header').insertAdjacentHTML(
+    'afterend',
+    `<div class="banner">Read-only snapshot of the live Zcash testnet app, taken ${window.HF_SNAPSHOT_AT}. Every number here comes from real shielded transactions. To trade, run it locally: <a href="https://github.com/rizwanmoulvi/hushfolio">GitHub</a> · <a href="https://youtu.be/Q6GEWDKTkro">video</a></div>`,
+  );
 }
 
 // Tabs

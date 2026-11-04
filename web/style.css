@@ -73,3 +73,5 @@ td.empty { color: var(--muted); text-align: center; padding: 24px; white-space: 
 footer { color: var(--muted); font-size: 12px; padding-bottom: 40px; }
 a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
+.banner { max-width: 1068px; margin: 20px auto 0; padding: 12px 16px; border: 1px solid var(--accent); border-radius: 8px; color: var(--text); font-size: 13px; background: #f4b72810; }
+@media (max-width: 1100px) { .banner { margin: 20px 16px 0; } }
