@@ -69,7 +69,7 @@ How it works:
 
 The reward is an ordinary position: it shows in the portfolio tagged *stock-back*, it can be sold for shielded ZEC, and the accountant's audit matches it to the investor's own `REWARD` request instead of a BUY.
 
-**Tested on testnet:** a `REWARD` request for an invoice that doesn't exist (tx `a3e26d4994fa174e51cd837a428a0533fd9b4fd35a42eb60d476b4e62fe447c8`) was correctly rejected by the vault after it checked Bitrefill. The paying path is waiting on Bitrefill credits for a real delivered purchase.
+**Tested on testnet, both ways:** a real delivered purchase (Bitrefill's free test card, invoice `f96cff4d-…`) earned 0.00402643 WMTX (see Evidence), and a `REWARD` request for an invoice that doesn't exist (tx `a3e26d4994fa174e51cd837a428a0533fd9b4fd35a42eb60d476b4e62fe447c8`) was correctly rejected by the vault after it checked Bitrefill.
 
 **Next:** fund the reward from Bitrefill's affiliate commission (invoices already carry `payment.commission`) instead of from the vault.
 
@@ -171,7 +171,17 @@ npm test
 | Shielded SELL: hash-locked secret revealed | `c508fefb62bdea338a29daec735c0bb11935fc6756ac739e951016cc45619d5a` |
 | Vault CLOSE: paid 0.05018718 TAZ | `cd9dbeddd49c7273d1a01cc6c69c54f120f2e3fe0f4d59453444bb15d58ca5c8` |
 
-The audit, run in a fresh view-only wallet from the viewing key alone, passed: the signature, stake, entry price (0.08% from market) and exit price (0.41% from market) all checked out. Realized: +$0.20 (+0.00018718 TAZ).
+Later, on the EC2 deployment (recorded in the walkthrough video):
+
+| Step | Evidence |
+| --- | --- |
+| Shielded BUY, 0.01 TAZ → NVDAX, filled at $203.69 | fill tx `4a7873b3c7696d839ff346b2433a2cfdb2aa16e725d0597f6b7221964e68a04d` |
+| SELL of WMTX, vault paid 0.009945 TAZ | close tx `8a7cb8aee44142ad64a498fa56b20b14284ba5a5e3c56895e033941f76328798` |
+| **Agent's own Bitrefill purchase**, triggered by that sale: Bitrefill's free test gift card, delivered | invoice `f96cff4d-56af-40a4-bc23-1945bc7eb16d` |
+| **Stock-back**: vault verified the invoice, issued 0.00402643 WMTX | fill tx `361eaa7a9f2f6e55b5eecb78e4058fef6b4f084adcaaaa7622580869cf82f351` |
+| Audit of all 6 positions, including stock-back matched to its invoice | passed |
+
+The first audit, run in a fresh view-only wallet from the viewing key alone, passed: the signature, stake, entry price (0.08% from market) and exit price (0.41% from market) all checked out. Realized: +$0.20 (+0.00018718 TAZ).
 
 ## Next 30 days
 
