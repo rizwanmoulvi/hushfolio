@@ -45,6 +45,7 @@ const commands = {
         }),
         'POST /api/spend/approve': ({ pos }) => spender.approve(pos),
         'POST /api/spend/decline': ({ pos }) => spender.decline(pos),
+        'POST /api/spend/retry': ({ pos }) => spender.retry(pos),
         'GET /api/quote': () => investor.prices.spot(),
         'POST /api/buy': ({ sym, zec }) => investor.buy(sym, Number(zec)),
         'POST /api/sell': ({ pos }) => investor.sell(pos),

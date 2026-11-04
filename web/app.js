@@ -48,6 +48,7 @@ async function loadPortfolio() {
     $('t-unreal').innerHTML = signed(totals.unrealizedUsd);
     $('t-real').innerHTML = `${signed(totals.realizedUsd)}`;
     $('sync').textContent = `synced ${new Date().toLocaleTimeString()}`;
+    setTimeout(loadSpend, 1500);
   } catch (err) {
     $('sync').textContent = `sync failed: ${err.message}`;
   }
@@ -100,6 +101,42 @@ $('buy').addEventListener('submit', async (e) => {
   }
 });
 
+async function loadSpend() {
+  const s = await api('spend');
+  if (!s.enabled) {
+    $('spend-card').hidden = true;
+    return;
+  }
+  const r = s.rules;
+  $('br-balance').textContent = `Bitrefill credit: ${Math.round(s.balance.balance * 1e8)} sats`;
+  $('spend-rule').textContent = `Rule set once: when a position closes, buy ${r.reward.label} with up to ${r.proceedsShare * 100}% of the verified sale. Auto-buys up to $${r.autoApproveUsd}; asks you up to $${r.maxPurchaseUsd}; never more.`;
+  const rows = [...s.approvals, ...s.purchases].map((p) => {
+    const action =
+      p.status === 'awaiting-approval'
+        ? `<button class="ghost" data-spend="approve" data-pos="${p.pos}">Approve</button> <button class="ghost" data-spend="decline" data-pos="${p.pos}">Decline</button>`
+        : p.status === 'failed'
+          ? `<button class="ghost" data-spend="retry" data-pos="${p.pos}">Retry</button>`
+          : '';
+    const detail = p.error ? `<span class="down">${p.error.match(/"message":"([^"]+)"/)?.[1] ?? p.error.slice(0, 80)}</span>` : p.invoiceId ? `invoice ${p.invoiceId}${p.redemption ? ` · code ${p.redemption.hint}` : ''}` : '';
+    return `<tr><td>${p.pos.slice(0, 10)}…</td><td>${p.reward ?? r.reward.label}</td><td>${p.priceUsd ? usd(p.priceUsd) : '–'}</td><td>${p.budgetUsd ? usd(p.budgetUsd) : '–'}</td><td><span class="tag">${p.status}</span> ${detail}</td><td>${action}</td></tr>`;
+  });
+  $('spend').innerHTML = rows.length
+    ? `<table><thead><tr><th>Sale</th><th>Reward</th><th>Price</th><th>Budget</th><th>Status</th><th></th></tr></thead><tbody>${rows.join('')}</tbody></table>`
+    : '<p class="hint">Nothing yet. Close a position to trigger the agent.</p>';
+}
+
+$('spend').addEventListener('click', async (e) => {
+  const { spend, pos } = e.target.dataset;
+  if (!spend) return;
+  e.target.disabled = true;
+  try {
+    await api(`spend/${spend}`, { pos });
+  } catch (err) {
+    alert(err.message);
+  }
+  loadSpend();
+});
+
 async function loadBook() {
   const { positions, log } = await api('vault-book');
   $('book').innerHTML = positions.length
@@ -144,5 +181,6 @@ function renderReport(r) {
 loadAccount();
 loadQuote();
 loadPortfolio();
+loadSpend();
 setInterval(loadPortfolio, 60_000);
 setInterval(loadAccount, 30_000);

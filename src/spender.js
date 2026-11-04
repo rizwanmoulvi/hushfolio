@@ -56,6 +56,14 @@ export class GainsSpender {
     return this.#purchase(pending, 'investor');
   }
 
+  // A failed purchase (e.g. no Bitrefill credit yet) is reconsidered on the next sync.
+  retry(pos) {
+    if (this.store.data.purchases[pos]?.status !== 'failed') throw new Error(`${pos} has no failed purchase`);
+    delete this.store.data.purchases[pos];
+    this.store.save();
+    return { pos, status: 'will retry on next sync' };
+  }
+
   decline(pos) {
     const pending = this.store.data.approvals[pos];
     if (!pending) throw new Error(`nothing awaiting approval for ${pos}`);
