@@ -43,7 +43,6 @@ export class Vault {
 
   async tick() {
     const transfers = await this.wallet.messages();
-    if (!Array.isArray(transfers)) throw new Error(String(transfers).slice(0, 300));
     for (const t of transfers) {
       if (t.kind !== 'received' || t.status !== 'confirmed') continue;
       if (this.store.data.processed[t.txid]) continue;

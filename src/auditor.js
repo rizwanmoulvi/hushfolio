@@ -18,7 +18,6 @@ export class Auditor {
     const dir = join(DATA_DIR, 'audit', createHash('sha256').update(ufvk).digest('hex').slice(0, 12));
     const wallet = new Zingo(dir, { viewkey: ufvk, birthday });
     const transfers = await wallet.messages();
-    if (!Array.isArray(transfers)) throw new Error(String(transfers).slice(0, 300));
 
     const { positions, rejected } = buildLedger(transfers, receiptKey);
     const buys = sentBuys(transfers);

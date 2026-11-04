@@ -23,8 +23,7 @@ export class Investor {
 
   async account() {
     const [address] = await this.wallet.addresses();
-    const balance = await this.wallet.call('balance', [], { sync: false });
-    return { address, balance };
+    return { address, balance: await this.wallet.balance() };
   }
 
   async buy(sym, zec) {
@@ -51,7 +50,6 @@ export class Investor {
 
   async portfolio() {
     const [vault, transfers, quote] = await Promise.all([this.vault(), this.wallet.messages(), this.prices.spot()]);
-    if (!Array.isArray(transfers)) throw new Error(String(transfers).slice(0, 300));
     const { positions, rejected } = buildLedger(transfers, vault.receiptKey);
     const totals = markToMarket(positions, quote);
     return { positions, pending: this.#pending(positions), totals, rejected: rejected.length, quote };
@@ -59,7 +57,7 @@ export class Investor {
 
   // Everything an accountant needs, and nothing that can spend.
   async disclose() {
-    const { ufvk, birthday } = await this.wallet.call('export_ufvk', [], { sync: false });
+    const { ufvk, birthday } = await this.wallet.call('export_ufvk', [], { net: 'offline' });
     return { ufvk, birthday, vault: VAULT_URL, createdAt: new Date().toISOString() };
   }
 
