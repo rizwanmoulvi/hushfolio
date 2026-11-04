@@ -34,6 +34,25 @@ The position lives inside Zcash's shielded pool as a pair of encrypted memos.
 
    It then reports realized and unrealized P&L. The viewing key can't spend, and it can't sell either: sell secrets never go on chain.
 
+## Spend from a sale: the Bitrefill agent (Agentic Commerce track)
+
+When a position closes, an agent turns part of the sale into everyday spending in India, with no prompt and no human checkout. The **trigger** is the vault's signed CLOSE receipt arriving in your shielded wallet. The **budget** comes from that receipt. The **purchase** is a real order through Bitrefill's REST API.
+
+- **Rule, set once:** buy a Swiggy Money ₹50 gift card with up to 5% of each verified sale. The product, value and share are configurable (`REWARD_PRODUCT`, `REWARD_VALUE`, `SPEND_SHARE`).
+- **Guardrails:**
+  - *The most the agent can spend:* the lower of 5% of the sale's signed proceeds and **$5 per purchase**.
+  - *Who approves above that:* purchases up to **$1** go through automatically. Between $1 and $5, the investor approves or declines in the app. Above the budget or above $5, nothing is bought.
+  - Each sale can trigger at most one purchase. The agent runs one pass at a time and records each attempt before buying, so it never fires twice.
+  - Delivered codes are masked on screen and in storage. Full codes stay in your Bitrefill account.
+- **Bitrefill surfaces used:** REST API v2 (`/products/{id}` for live pricing, `POST /invoices` with `payment_method: balance` and `auto_pay`, then `/invoices/{id}` and `/orders/{id}` polled until the order is delivered).
+- **Built vs reused:** we built the trigger (the shielded receipt), the receipt-bound budget, the guardrails and the approval flow. We reused Bitrefill's catalog, invoices and fulfillment.
+- **Honest gap:** testnet TAZ can't pay Bitrefill, and Bitrefill doesn't accept ZEC, so purchases are paid from Bitrefill event credits. On mainnet the vault's payout would go shielded ZEC → NEAR Intents → USDC → Bitrefill, which only exists on mainnet.
+
+**Which parts are for which track:**
+- Privacy track: the vault, the memo protocol, fresh reply addresses, sell rights only the investor can use, and the viewing-key audit.
+- Agentic Commerce track: `src/spender.js` and `src/bitrefill.js`, and the "Spend from a sale" panel in the app.
+- The privacy note below covers both.
+
 ## Privacy and trust note
 
 **What stays private**
@@ -50,6 +69,7 @@ The position lives inside Zcash's shielded pool as a pair of encrypted memos.
 **What users have to trust**
 - **The vault operator**, most of all. Positions are synthetic: the vault owes you the price move and holds your ZEC to cover it. On mainnet, this is the slot a licensed issuer or a NEAR Intents route to real xStocks would fill. The signed receipts make a cheating vault provable but not impossible.
 - **The vault's receipt key.** The auditor fetches it from the vault's published endpoint.
+- **Bitrefill**, for the spending agent. Bitrefill sees the purchase and the account it's paid from, but nothing on Zcash. The sale that triggered it stays shielded.
 - **CoinGecko** as the price source for fills and audits. Pyth's Hermes, a signed oracle, would be better, but it has required an API key since August 2026.
 - **zingolib / zingo-cli 8.0** as the wallet.
 
@@ -79,6 +99,8 @@ export ZINGO_CLI=~/zk/zingolib/target-direct/release/zingo-cli                  
 npm run vault     # prints the vault address; fund it with TAZ
 npm run app       # http://localhost:7070; fund the investor address it shows
 
+# Optional: the Bitrefill agent. Put BITREFILL_API_KEY=... in .env (git-ignored)
+
 # Command-line flow
 node src/cli.js buy AAPLX 0.01
 node src/cli.js portfolio
@@ -103,7 +125,20 @@ npm test
 | `src/memo.js` | `HF1` memo format and receipt signatures |
 | `src/ledger.js` | Rebuilds positions and P&L from receipts |
 | `src/zingo.js` | zingo-cli wrapper |
+| `src/spender.js` | Bitrefill agent: receipt-triggered, budgeted and approval-gated purchases |
+| `src/bitrefill.js` | Bitrefill REST v2 client |
 | `web/` | The UI: portfolio, the vault's view, the accountant flow |
+
+## Evidence (Zcash testnet, 4 Nov 2026)
+
+| Step | Transaction |
+| --- | --- |
+| Shielded BUY, 0.05 TAZ → AAPLX | `87bf3613228a8d9bee13306b019b47aca5b45cf8112fbb12c5052030077c8c14` |
+| Vault FILL receipt: 0.18782938 AAPLX at $340.41 | `2d9750d00932e0097970568cfc010c26eac6b52e6c042dede291363d1bc7c5bf` |
+| Shielded SELL: hash-locked secret revealed | `c508fefb62bdea338a29daec735c0bb11935fc6756ac739e951016cc45619d5a` |
+| Vault CLOSE: paid 0.05018718 TAZ | `cd9dbeddd49c7273d1a01cc6c69c54f120f2e3fe0f4d59453444bb15d58ca5c8` |
+
+The audit, run in a fresh view-only wallet from the viewing key alone, passed: the signature, stake, entry price (0.08% from market) and exit price (0.41% from market) all checked out. Realized: +$0.20 (+0.00018718 TAZ).
 
 ## Next 30 days
 
