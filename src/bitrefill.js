@@ -12,8 +12,9 @@ export class Bitrefill {
     return this.#get('/accounts/balance');
   }
 
+  // Bitrefill's free test products are hidden unless asked for.
   product(id) {
-    return this.#get(`/products/${encodeURIComponent(id)}`);
+    return this.#get(`/products/${encodeURIComponent(id)}?include_test_products=true`);
   }
 
   // auto_pay settles from balance immediately, so a created invoice is a purchase.

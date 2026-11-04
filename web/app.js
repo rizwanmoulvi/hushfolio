@@ -215,5 +215,5 @@ loadAccount();
 loadQuote();
 loadPortfolio();
 loadSpend();
-setInterval(loadPortfolio, 60_000);
+setInterval(loadPortfolio, 20_000);
 setInterval(loadAccount, 30_000);

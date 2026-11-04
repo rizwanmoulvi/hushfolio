@@ -34,6 +34,8 @@ export const STOCK_BACK = {
   'flipkart-india': 'WMTX',
   'amazon-fresh-india': 'AMZNX',
   'google-play-india': 'GOOGLX',
+  // Bitrefill's free test card, mapped so the whole loop can run without credits.
+  'test-gift-card-code': 'WMTX',
 };
 // Share of the purchase price paid back in stock. Funded by the vault operator for now.
 export const STOCK_BACK_RATE = Number(process.env.STOCK_BACK_RATE ?? 0.05);

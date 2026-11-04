@@ -121,6 +121,8 @@ export class GainsSpender {
   }
 
   async #rewardPriceUsd() {
+    // Bitrefill's test products are free: their listed price is never charged.
+    if (RULES.reward.productId.startsWith('test-')) return 0;
     const product = await this.bitrefill.product(RULES.reward.productId);
     const pkg = product.packages?.find((x) => String(x.value) === String(RULES.reward.value));
     if (!pkg) throw new Error(`no ${RULES.reward.value} package on ${RULES.reward.productId}`);

@@ -88,7 +88,8 @@ export class Vault {
 
   async #usd(payment) {
     if (payment.currency === 'USD' || payment.currency === 'USDC') return payment.price;
-    if (payment.currency === 'BTC') return payment.price * (await this.prices.usd('bitcoin'));
+    // Bitrefill quotes BTC prices in satoshis.
+    if (payment.currency === 'BTC') return (payment.price / 1e8) * (await this.prices.usd('bitcoin'));
     throw new Error(`unpriced payment currency ${payment.currency}`);
   }
 
