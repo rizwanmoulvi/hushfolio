@@ -6,7 +6,7 @@ export const LIGHTWALLETD = process.env.LIGHTWALLETD ?? 'https://testnet.zec.roc
 export const DATA_DIR = process.env.HF_DATA ?? join(process.cwd(), 'data');
 
 export const VAULT_PORT = Number(process.env.VAULT_PORT ?? 7001);
-export const APP_PORT = Number(process.env.APP_PORT ?? 7000);
+export const APP_PORT = Number(process.env.APP_PORT ?? 7070);
 export const VAULT_URL = process.env.VAULT_URL ?? `http://localhost:${VAULT_PORT}`;
 
 export const ZAT = 100_000_000;
