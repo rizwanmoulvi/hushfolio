@@ -1,0 +1,13 @@
+{
+  "name": "hushfolio",
+  "version": "0.1.0",
+  "description": "Private tokenized-stock exposure that settles in shielded ZEC, with viewing-key audits.",
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "vault": "node src/cli.js vault",
+    "app": "node src/cli.js app",
+    "test": "node --test test/*.test.js"
+  },
+  "license": "MIT"
+}
