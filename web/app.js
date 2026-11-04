@@ -37,7 +37,7 @@ async function loadQuote() {
 }
 
 async function loadPortfolio() {
-  $('sync').textContent = 'syncing over Nym…';
+  $('sync').textContent = 'syncing…';
   try {
     const { positions, pending, totals } = await api('portfolio');
     $('positions').innerHTML = positions.length
@@ -87,7 +87,7 @@ $('buy').addEventListener('submit', async (e) => {
   const form = new FormData(e.target);
   const button = e.target.querySelector('button');
   button.disabled = true;
-  button.textContent = 'Sending over Nym…';
+  button.textContent = 'Sending shielded order…';
   try {
     const { txid } = await api('buy', { sym: form.get('sym'), zec: form.get('zec') });
     button.textContent = `Sent · ${txid.slice(0, 10)}…`;
@@ -156,7 +156,7 @@ $('disclose').addEventListener('click', async () => {
 
 $('run-audit').addEventListener('click', async (e) => {
   e.target.disabled = true;
-  $('report').innerHTML = '<p class="hint">Building a view-only wallet and syncing it over Nym…</p>';
+  $('report').innerHTML = '<p class="hint">Building a view-only wallet from the key and syncing it…</p>';
   try {
     renderReport(await api('audit', disclosure));
   } catch (err) {
