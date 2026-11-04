@@ -2,7 +2,9 @@
 
 **Own Apple, Tesla and the S&P 500 without the world, or even your broker, seeing your portfolio. Shielded ZEC in, shielded ZEC out, and one viewing key for your accountant.**
 
-**Demo video:** https://youtu.be/Q6GEWDKTkro
+**Live app (Zcash testnet):** https://hushfolio-ten.vercel.app · **Demo video:** https://youtu.be/Q6GEWDKTkro
+
+Visitors can browse the real portfolio, see what the vault sees, and run the viewing-key audit live. Buying, selling and spending need the operator key: every sale triggers a real Bitrefill purchase, so a public button would let anyone drain the credits.
 
 Built at the Free Society Hackathon (Mumbai, 4 Nov 2026) for the **Privacy track**. Runs on Zcash testnet with NU7.
 
@@ -132,6 +134,13 @@ node src/cli.js sell <position>
 node src/cli.js disclose && node src/cli.js audit disclosure.json
 npm test
 ```
+
+## Deployment
+
+- **AWS EC2** (Ubuntu 26.04, t3.micro) runs the vault and the investor app as systemd services (`hushfolio-vault`, `hushfolio-app`), with a Linux `zingo-cli` built in Docker (`rust:1-bookworm`, `--no-default-features --features nakednet-test-mode`).
+- **Vercel** serves the HTTPS domain and proxies every request to the EC2 app (`vercel.json` rewrite).
+- Settings in `.env`: `BITREFILL_API_KEY`; `HF_ADMIN_TOKEN` (an operator opens `/?key=<token>` once to unlock trading); `COINGECKO_API_KEY` (optional, a free demo key that avoids rate limits on cloud IPs).
+- `scripts/snapshot.sh` builds a static, read-only copy of the app from real data, as a fallback that needs no server.
 
 ## Technology and design decisions
 
