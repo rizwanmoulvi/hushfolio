@@ -58,7 +58,7 @@ function row(p) {
   const open = p.status === 'open';
   return `<tr>
     <td>${tx(p.closeTxid ?? p.fillTxid)}</td>
-    <td>${p.sym}</td>
+    <td>${p.sym}${p.stockBack ? ' <span class="tag">stock-back</span>' : ''}</td>
     <td>${p.qty.toFixed(6)}</td>
     <td>${usd(p.openPx)}</td>
     <td>${open ? usd(p.lastPx) : `${usd(p.closePx)} <span class="tag">closed</span>`}</td>
@@ -109,7 +109,7 @@ async function loadSpend() {
   }
   const r = s.rules;
   $('br-balance').textContent = `Bitrefill credit: ${Math.round(s.balance.balance * 1e8)} sats`;
-  $('spend-rule').textContent = `Rule set once: when a position closes, buy ${r.reward.label} with up to ${r.proceedsShare * 100}% of the verified sale. Auto-buys up to $${r.autoApproveUsd}; asks you up to $${r.maxPurchaseUsd}; never more.`;
+  $('spend-rule').textContent = `Rule set once: when a position closes, buy ${r.reward.label} with up to ${r.proceedsShare * 100}% of the verified sale. Auto-buys up to $${r.autoApproveUsd}; asks you up to $${r.maxPurchaseUsd}; never more. Each delivered card earns stock-back in the brand owner's stock (Flipkart → Walmart).`;
   const rows = [...s.approvals, ...s.purchases].map((p) => {
     const action =
       p.status === 'awaiting-approval'
@@ -117,7 +117,8 @@ async function loadSpend() {
         : p.status === 'failed'
           ? `<button class="ghost" data-spend="retry" data-pos="${p.pos}">Retry</button>`
           : '';
-    const detail = p.error ? `<span class="down">${p.error.match(/"message":"([^"]+)"/)?.[1] ?? p.error.slice(0, 80)}</span>` : p.invoiceId ? `invoice ${p.invoiceId}${p.redemption ? ` · code ${p.redemption.hint}` : ''}` : '';
+    const stockBack = p.stockBackPos ? ` · stock-back claimed (${p.stockBackPos.slice(0, 8)}…)` : p.stockBackError ? ` · <span class="down">stock-back: ${p.stockBackError}</span>` : '';
+    const detail = p.error ? `<span class="down">${p.error.match(/"message":"([^"]+)"/)?.[1] ?? p.error.slice(0, 80)}</span>` : p.invoiceId ? `invoice ${p.invoiceId}${p.redemption ? ` · code ${p.redemption.hint}` : ''}${stockBack}` : '';
     return `<tr><td>${p.pos.slice(0, 10)}…</td><td>${p.reward ?? r.reward.label}</td><td>${p.priceUsd ? usd(p.priceUsd) : '–'}</td><td>${p.budgetUsd ? usd(p.budgetUsd) : '–'}</td><td><span class="tag">${p.status}</span> ${detail}</td><td>${action}</td></tr>`;
   });
   $('spend').innerHTML = rows.length

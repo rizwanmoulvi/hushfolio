@@ -40,7 +40,7 @@ The position lives inside Zcash's shielded pool as a pair of encrypted memos.
 
 When a position closes, an agent turns part of the sale into everyday spending in India, with no prompt and no human checkout. The **trigger** is the vault's signed CLOSE receipt arriving in your shielded wallet. The **budget** comes from that receipt. The **purchase** is a real order through Bitrefill's REST API.
 
-- **Rule, set once:** buy a Swiggy Money ₹50 gift card with up to 5% of each verified sale. The product, value and share are configurable (`REWARD_PRODUCT`, `REWARD_VALUE`, `SPEND_SHARE`).
+- **Rule, set once:** buy a Flipkart ₹50 gift card with up to 5% of each verified sale. The product, value and share are configurable (`REWARD_PRODUCT`, `REWARD_VALUE`, `SPEND_SHARE`).
 - **Guardrails:**
   - *The most the agent can spend:* the lower of 5% of the sale's signed proceeds and **$5 per purchase**.
   - *Who approves above that:* purchases up to **$1** go through automatically. Between $1 and $5, the investor approves or declines in the app. Above the budget or above $5, nothing is bought.
@@ -50,9 +50,30 @@ When a position closes, an agent turns part of the sale into everyday spending i
 - **Built vs reused:** we built the trigger (the shielded receipt), the receipt-bound budget, the guardrails and the approval flow. We reused Bitrefill's catalog, invoices and fulfillment.
 - **Honest gap:** testnet TAZ can't pay Bitrefill, and Bitrefill doesn't accept ZEC, so purchases are paid from Bitrefill event credits. On mainnet the vault's payout would go shielded ZEC → NEAR Intents → USDC → Bitrefill, which only exists on mainnet.
 
+### Stock-back: earn the stock of the brands you shop
+
+Every delivered card earns a shielded position in the stock of the company behind the brand, worth **5% of what was paid** (`STOCK_BACK_RATE`). We, the operator, fund it for now.
+
+| Bitrefill product | Stock-back in | Why |
+| --- | --- | --- |
+| `flipkart-india` | WMTX (Walmart) | Walmart owns Flipkart |
+| `amazon-fresh-india` | AMZNX (Amazon) | |
+| `google-play-india` | GOOGLX (Alphabet) | |
+
+How it works:
+1. After delivery, the app sends the vault a shielded `REWARD` memo carrying the invoice ID, a hash-locked sell claim, and a fresh one-time reply address.
+2. The vault looks the invoice up on our Bitrefill account. It checks that the product maps to a stock, that the order was delivered, and that this invoice hasn't been rewarded before.
+3. It then sends back a signed FILL receipt with zero stake.
+
+The reward is an ordinary position: it shows in the portfolio tagged *stock-back*, it can be sold for shielded ZEC, and the accountant's audit matches it to the investor's own `REWARD` request instead of a BUY.
+
+**Tested on testnet:** a `REWARD` request for an invoice that doesn't exist (tx `a3e26d4994fa174e51cd837a428a0533fd9b4fd35a42eb60d476b4e62fe447c8`) was correctly rejected by the vault after it checked Bitrefill. The paying path is waiting on Bitrefill credits for a real delivered purchase.
+
+**Next:** fund the reward from Bitrefill's affiliate commission (invoices already carry `payment.commission`) instead of from the vault.
+
 **Which parts are for which track:**
 - Privacy track: the vault, the memo protocol, fresh reply addresses, sell rights only the investor can use, and the viewing-key audit.
-- Agentic Commerce track: `src/spender.js` and `src/bitrefill.js`, and the "Spend from a sale" panel in the app.
+- Agentic Commerce track: `src/spender.js` and `src/bitrefill.js`, stock-back (`REWARD` in `src/vault.js`), and the "Spend from a sale" panel in the app.
 - The privacy note below covers both.
 
 ## Privacy and trust note
@@ -72,6 +93,7 @@ When a position closes, an agent turns part of the sale into everyday spending i
 - **The vault operator**, most of all. Positions are synthetic: the vault owes you the price move and holds your ZEC to cover it. On mainnet, this is the slot a licensed issuer or a NEAR Intents route to real xStocks would fill. The signed receipts make a cheating vault provable but not impossible.
 - **The vault's receipt key.** The auditor fetches it from the vault's published endpoint.
 - **Bitrefill**, for the spending agent. Bitrefill sees the purchase and the account it's paid from, but nothing on Zcash. The sale that triggered it stays shielded.
+- **Stock-back:** the vault checks the Bitrefill invoice before paying the reward, so it learns which purchase earned which reward position, but still not who you are.
 - **CoinGecko** as the price source for fills and audits. Pyth's Hermes, a signed oracle, would be better, but it has required an API key since August 2026.
 - **zingolib / zingo-cli 8.0** as the wallet.
 

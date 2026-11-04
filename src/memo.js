@@ -3,12 +3,13 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 
 // Hushfolio memo protocol v1: pipe-separated ASCII inside a 512-byte Zcash memo.
-//   investor -> vault:  BUY, SELL  (instructions)
+//   investor -> vault:  BUY, SELL, REWARD  (instructions)
 //   vault -> investor:  FILL, CLOSE, REFUND  (receipts, signed by the vault)
 const TAG = 'HF1';
 const FIELDS = {
   BUY: ['sym', 'claim', 'reply'],
   SELL: ['pos', 'secret', 'reply'],
+  REWARD: ['invoice', 'claim', 'reply'],
   FILL: ['pos', 'sym', 'qty', 'px', 'zec', 'ts', 'stake', 'claim'],
   CLOSE: ['pos', 'sym', 'qty', 'px', 'zec', 'ts', 'payout'],
   REFUND: ['ref', 'reason', 'amount'],

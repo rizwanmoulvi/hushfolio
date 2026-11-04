@@ -29,7 +29,9 @@ const commands = {
   async app() {
     const investor = new Investor();
     const auditor = new Auditor();
-    const spender = process.env.BITREFILL_API_KEY && new GainsSpender(new Bitrefill(), investor.prices);
+    const spender =
+      process.env.BITREFILL_API_KEY &&
+      new GainsSpender(new Bitrefill(), investor.prices, (purchase) => investor.claimReward(purchase.invoiceId));
     serve(
       APP_PORT,
       {
@@ -46,6 +48,7 @@ const commands = {
         'POST /api/spend/approve': ({ pos }) => spender.approve(pos),
         'POST /api/spend/decline': ({ pos }) => spender.decline(pos),
         'POST /api/spend/retry': ({ pos }) => spender.retry(pos),
+        'POST /api/stockback': ({ invoice }) => investor.claimReward(invoice),
         'GET /api/quote': () => investor.prices.spot(),
         'POST /api/buy': ({ sym, zec }) => investor.buy(sym, Number(zec)),
         'POST /api/sell': ({ pos }) => investor.sell(pos),
@@ -61,6 +64,7 @@ const commands = {
   portfolio: () => new Investor().portfolio().then(print),
   buy: (sym, zec) => new Investor().buy(sym, Number(zec)).then(print),
   sell: (pos) => new Investor().sell(pos).then(print),
+  stockback: (invoice) => new Investor().claimReward(invoice).then(print),
   async disclose(out = 'disclosure.json') {
     writeFileSync(out, JSON.stringify(await new Investor().disclose(), null, 2), { mode: 0o600 });
     print(`viewing-key disclosure written to ${out}`);

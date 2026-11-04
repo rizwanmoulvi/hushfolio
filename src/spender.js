@@ -12,9 +12,9 @@ export const RULES = {
   // Hard ceiling per purchase, approval or not.
   maxPurchaseUsd: Number(process.env.MAX_PURCHASE_USD ?? 5),
   reward: {
-    productId: process.env.REWARD_PRODUCT ?? 'swiggy-money-india',
+    productId: process.env.REWARD_PRODUCT ?? 'flipkart-india',
     value: Number(process.env.REWARD_VALUE ?? 50),
-    label: process.env.REWARD_LABEL ?? 'Swiggy Money ₹50',
+    label: process.env.REWARD_LABEL ?? 'Flipkart ₹50',
   },
 };
 
@@ -23,9 +23,11 @@ const DELIVERY_POLLS = 20;
 // "Spend from a sale": when a position closes, the agent buys the investor's chosen
 // reward on Bitrefill, sized by the sale's signed CLOSE receipt, never by a prompt.
 export class GainsSpender {
-  constructor(bitrefill, prices) {
+  // onDelivered(record) runs after a purchase is delivered; the app uses it to claim stock-back.
+  constructor(bitrefill, prices, onDelivered) {
     this.bitrefill = bitrefill;
     this.prices = prices;
+    this.onDelivered = onDelivered;
     this.store = new JsonStore(join(DATA_DIR, 'investor', 'spend.json'), { purchases: {}, approvals: {} });
   }
 
@@ -99,12 +101,23 @@ export class GainsSpender {
       const orderId = invoice.orders?.[0]?.id;
       const order = orderId && (await this.bitrefill.order(orderId));
       if (order?.status === 'delivered') {
-        return this.#record({ ...record, orderId, redemption: mask(order.redemption_info) }, 'delivered');
+        const delivered = this.#record({ ...record, orderId, redemption: mask(order.redemption_info) }, 'delivered');
+        return this.#claimStockBack(delivered);
       }
       this.#record({ ...record, orderId }, invoice.status);
       await sleep(3000);
     }
     return this.store.data.purchases[record.pos];
+  }
+
+  async #claimStockBack(record) {
+    if (!this.onDelivered) return record;
+    try {
+      const { pos } = await this.onDelivered(record);
+      return this.#record({ ...record, stockBackPos: pos }, 'delivered');
+    } catch (err) {
+      return this.#record({ ...record, stockBackError: err.message }, 'delivered');
+    }
   }
 
   async #rewardPriceUsd() {

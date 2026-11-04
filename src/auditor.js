@@ -28,13 +28,18 @@ export class Auditor {
   }
 
   async #check(p, buys) {
-    const buy = buys.get(p.pos);
+    const order = buys.get(p.pos);
     const checks = {
       signature: { ok: true, detail: 'signed by the vault receipt key' },
-      stake: {
-        ok: buy?.value === p.stake,
-        detail: buy ? `BUY tx ${buy.txid.slice(0, 12)}… sent ${buy.value} zat` : 'no matching BUY in this wallet',
-      },
+      stake: p.stockBack
+        ? {
+            ok: order?.type === 'REWARD',
+            detail: order ? `stock-back for Bitrefill invoice ${order.invoice}` : 'no matching REWARD request in this wallet',
+          }
+        : {
+            ok: order?.type === 'BUY' && order.value === p.stake,
+            detail: order ? `BUY tx ${order.txid.slice(0, 12)}… sent ${order.value} zat` : 'no matching BUY in this wallet',
+          },
       openPrice: await this.#priceCheck(p.sym, p.openPx, p.openedAt),
     };
     if (p.status === 'closed') checks.closePrice = await this.#priceCheck(p.sym, p.closePx, p.closedAt);
@@ -53,12 +58,13 @@ export class Auditor {
   }
 }
 
-// The investor's own BUY orders, visible to a full viewing key as outgoing notes.
+// The investor's own BUY and REWARD requests, visible to a full viewing key as outgoing notes.
 function sentBuys(transfers) {
-  const buys = new Map();
+  const orders = new Map();
   for (const t of transfers) {
     if (t.kind !== 'sent') continue;
-    if ((t.memos ?? []).some((m) => decodeMemo(m)?.type === 'BUY')) buys.set(t.txid.slice(0, 16), t);
+    const msg = (t.memos ?? []).map(decodeMemo).find((m) => m?.type === 'BUY' || m?.type === 'REWARD');
+    if (msg) orders.set(t.txid.slice(0, 16), { txid: t.txid, value: t.value, type: msg.type, invoice: msg.invoice });
   }
-  return buys;
+  return orders;
 }

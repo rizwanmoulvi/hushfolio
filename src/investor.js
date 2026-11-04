@@ -37,6 +37,18 @@ export class Investor {
     return { pos: txid.slice(0, 16), txid };
   }
 
+  // Stock-back: ask the vault for the reward a delivered Bitrefill purchase earned.
+  // Same privacy as a buy: a fresh reply address and a sell secret only this machine holds.
+  async claimReward(invoice) {
+    const vault = await this.vault();
+    const secret = randomBytes(16).toString('hex');
+    const reply = await this.wallet.newAddress();
+    const memo = encodeMemo('REWARD', { invoice, claim: claimOf(secret), reply });
+    const txid = await this.wallet.send([{ address: vault.address, amount: 0, memo }]);
+    this.#remember(txid.slice(0, 16), { txid, sym: 'stock-back', secret, reply, invoice, at: Date.now() });
+    return { pos: txid.slice(0, 16), txid };
+  }
+
   async sell(pos) {
     const order = this.store.data.orders[pos];
     if (!order) throw new Error(`no sell secret for position ${pos}`);
@@ -66,7 +78,7 @@ export class Investor {
     const byPos = new Map(positions.map((p) => [p.pos, p]));
     return Object.entries(this.store.data.orders).flatMap(([pos, o]) => {
       const p = byPos.get(pos);
-      if (!p) return [{ pos, sym: o.sym, side: 'BUY', txid: o.txid }];
+      if (!p) return [{ pos, sym: o.sym, side: o.invoice ? 'STOCK-BACK' : 'BUY', txid: o.txid }];
       if (o.sellTxid && p.status === 'open') return [{ pos, sym: o.sym, side: 'SELL', txid: o.sellTxid }];
       return [];
     });

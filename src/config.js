@@ -23,5 +23,18 @@ export const ASSETS = {
   TSLAX: { name: 'Tesla', coingecko: 'tesla-xstock' },
   NVDAX: { name: 'NVIDIA', coingecko: 'nvidia-xstock' },
   SPYX: { name: 'S&P 500', coingecko: 'sp500-xstock' },
+  AMZNX: { name: 'Amazon', coingecko: 'amazon-xstock' },
+  WMTX: { name: 'Walmart', coingecko: 'walmart-xstock' },
+  GOOGLX: { name: 'Alphabet', coingecko: 'alphabet-xstock' },
 };
+
+// Stock-back: a delivered Bitrefill purchase earns the brand owner's tokenized stock.
+// Flipkart is owned by Walmart, so a Flipkart card earns Walmart.
+export const STOCK_BACK = {
+  'flipkart-india': 'WMTX',
+  'amazon-fresh-india': 'AMZNX',
+  'google-play-india': 'GOOGLX',
+};
+// Share of the purchase price paid back in stock. Funded by the vault operator for now.
+export const STOCK_BACK_RATE = Number(process.env.STOCK_BACK_RATE ?? 0.05);
 export const ZEC = { name: 'Zcash', coingecko: 'zcash' };

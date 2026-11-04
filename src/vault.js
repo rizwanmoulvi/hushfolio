@@ -1,6 +1,7 @@
 import { join } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
-import { ASSETS, DATA_DIR, RECEIPT_ZAT, ZAT } from './config.js';
+import { ASSETS, DATA_DIR, RECEIPT_ZAT, STOCK_BACK, STOCK_BACK_RATE, ZAT } from './config.js';
+import { Bitrefill } from './bitrefill.js';
 import { ReceiptSigner, claimOf, decodeMemo } from './memo.js';
 import { Prices } from './prices.js';
 import { JsonStore } from './store.js';
@@ -16,7 +17,10 @@ export class Vault {
     this.wallet = new Zingo(dir);
     this.signer = ReceiptSigner.loadOrCreate(join(dir, 'receipt-key.pem'));
     this.store = new JsonStore(join(dir, 'state.json'), { processed: {}, positions: {} });
+    this.store.data.rewarded ??= {};
     this.prices = new Prices();
+    // Stock-back checks purchases against the operator's own Bitrefill account.
+    this.bitrefill = process.env.BITREFILL_API_KEY ? new Bitrefill() : null;
     this.log = [];
   }
 
@@ -46,9 +50,46 @@ export class Vault {
     for (const t of transfers) {
       if (t.kind !== 'received' || t.status !== 'confirmed') continue;
       if (this.store.data.processed[t.txid]) continue;
-      const msg = (t.memos ?? []).map(decodeMemo).find((m) => m?.type === 'BUY' || m?.type === 'SELL');
-      if (msg) await (msg.type === 'BUY' ? this.#fill(t, msg) : this.#close(t, msg));
+      const msg = (t.memos ?? []).map(decodeMemo).find((m) => this.#handlers[m?.type]);
+      if (msg) await this.#handlers[msg.type](t, msg);
     }
+  }
+
+  #handlers = {
+    BUY: (t, msg) => this.#fill(t, msg),
+    SELL: (t, msg) => this.#close(t, msg),
+    REWARD: (t, msg) => this.#reward(t, msg),
+  };
+
+  // Stock-back: a delivered Bitrefill purchase earns a position in the brand owner's stock,
+  // worth STOCK_BACK_RATE of what was paid. Each invoice pays out once.
+  async #reward(t, msg) {
+    const reject = (why) => this.#done(t, `REJECT stock-back for ${msg.invoice}: ${why}`, null);
+    if (!this.bitrefill) return reject('vault has no Bitrefill access');
+    if (this.store.data.rewarded[msg.invoice]) return reject('already rewarded');
+    const invoice = await this.bitrefill.invoice(msg.invoice).catch(() => null);
+    if (!invoice) return reject('invoice not found on our Bitrefill account');
+    const order = invoice.orders?.[0];
+    const sym = STOCK_BACK[order?.product?.id];
+    if (!sym) return reject(`no stock-back for ${order?.product?.id}`);
+    if (order.status !== 'delivered' && invoice.status !== 'complete') return reject(`not delivered (${order.status})`);
+
+    const quote = await this.prices.spot();
+    const paidUsd = await this.#usd(invoice.payment);
+    const qty = (paidUsd * STOCK_BACK_RATE) / quote[sym];
+    const receipt = { pos: t.txid.slice(0, 16), sym, qty: qty.toFixed(8), px: quote[sym], zec: quote.ZEC, ts: quote.ts, stake: 0, claim: msg.claim };
+    const txid = await this.wallet.send([
+      { address: msg.reply, amount: RECEIPT_ZAT, memo: this.signer.sign('FILL', receipt) },
+    ]);
+    this.store.data.positions[receipt.pos] = { ...receipt, status: 'open', fillTxid: txid, stockBack: msg.invoice };
+    this.store.data.rewarded[msg.invoice] = receipt.pos;
+    this.#done(t, `STOCK-BACK ${receipt.qty} ${sym} for invoice ${msg.invoice} ($${paidUsd.toFixed(2)} paid)`, txid);
+  }
+
+  async #usd(payment) {
+    if (payment.currency === 'USD' || payment.currency === 'USDC') return payment.price;
+    if (payment.currency === 'BTC') return payment.price * (await this.prices.usd('bitcoin'));
+    throw new Error(`unpriced payment currency ${payment.currency}`);
   }
 
   async #fill(t, msg) {

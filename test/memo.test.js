@@ -39,3 +39,14 @@ test('ledger rebuilds a round trip and its P&L', () => {
   assert.equal(positions[0].pnlUsd, 10);
   assert.equal(totals.realizedZat, 1_000_000);
 });
+
+test('REWARD memo fits and a zero-stake fill is a stock-back position', () => {
+  const memo = encodeMemo('REWARD', { invoice: 'c2b27180-610e-4132-af77-ad42fc0ac444', claim: claimOf('s'), reply });
+  assert.ok(Buffer.byteLength(memo) <= 512);
+  assert.equal(decodeMemo(memo).invoice, 'c2b27180-610e-4132-af77-ad42fc0ac444');
+  const fill = signer.sign('FILL', { pos: 'ef'.repeat(8), sym: 'WMTX', qty: '0.00022', px: 127.78, zec: 1280, ts: 1, stake: 0, claim: 'c' });
+  const { positions } = buildLedger([{ kind: 'received', txid: 't', memos: [fill] }], signer.publicKey);
+  const totals = markToMarket(positions, { WMTX: 127.78 });
+  assert.equal(positions[0].stockBack, true);
+  assert.ok(Math.abs(totals.stockBackUsd - 0.0281116) < 1e-6);
+});

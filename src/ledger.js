@@ -23,9 +23,10 @@ export function buildLedger(transfers, receiptKey) {
 
 // Adds live value and P&L. `quote` is a Prices.spot() result.
 export function markToMarket(positions, quote) {
-  const totals = { costUsd: 0, valueUsd: 0, realizedUsd: 0, unrealizedUsd: 0, realizedZat: 0 };
+  const totals = { costUsd: 0, valueUsd: 0, realizedUsd: 0, unrealizedUsd: 0, realizedZat: 0, stockBackUsd: 0 };
   for (const p of positions) {
     p.costUsd = p.qty * p.openPx;
+    if (p.stockBack) totals.stockBackUsd += p.costUsd;
     if (p.status === 'closed') {
       p.pnlUsd = p.qty * (p.closePx - p.openPx);
       p.pnlZat = p.payout - p.stake;
@@ -49,6 +50,8 @@ function applyReceipt(p, msg, t) {
   if (msg.type === 'FILL') {
     Object.assign(p, common, {
       stake: Number(msg.stake),
+      // A zero-stake fill is a stock-back reward: nothing was paid for it in ZEC.
+      stockBack: Number(msg.stake) === 0,
       openPx: Number(msg.px),
       openZec: Number(msg.zec),
       openedAt: Number(msg.ts),
