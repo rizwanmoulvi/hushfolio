@@ -3,7 +3,17 @@ import { ASSETS, ZEC } from './config.js';
 
 const API = 'https://api.coingecko.com/api/v3';
 const SPOT_TTL_MS = 60_000;
-const RETRY_DELAYS_MS = [3_000, 10_000];
+const RETRY_DELAYS_MS = [5_000, 15_000, 30_000];
+const MIN_SPACING_MS = 2_500;
+
+// Space out every CoinGecko request in this process: bursts are what trigger 429s.
+let nextSlot = 0;
+async function spaced(request) {
+  const wait = Math.max(0, nextSlot - Date.now());
+  nextSlot = Date.now() + wait + MIN_SPACING_MS;
+  if (wait) await sleep(wait);
+  return request();
+}
 // A free CoinGecko demo key lifts the shared per-IP limit that cloud servers hit.
 const HEADERS = {
   accept: 'application/json',
@@ -51,12 +61,12 @@ export class Prices {
     return best[1];
   }
 
-  // One cached hour of 5-minute points per asset keeps us under the keyless rate limit.
+  // One request per asset per day (5-minute points) keeps audits under the keyless rate limit.
   async #series(id, ts) {
-    const hour = Math.floor(ts / 3600) * 3600;
-    const key = `${id}:${hour}`;
+    const day = Math.floor(ts / 86400) * 86400;
+    const key = `${id}:${day}`;
     if (!this.#history.has(key)) {
-      const url = `${API}/coins/${id}/market_chart/range?vs_currency=usd&from=${hour - 1800}&to=${hour + 5400}`;
+      const url = `${API}/coins/${id}/market_chart/range?vs_currency=usd&from=${day - 1800}&to=${Math.min(day + 86400, Math.floor(Date.now() / 1000))}`;
       // Cache the request itself, so parallel audits share it; drop it if it fails.
       this.#history.set(key, getJson(url).then((body) => body.prices));
       this.#history.get(key).catch(() => this.#history.delete(key));
@@ -67,7 +77,7 @@ export class Prices {
 
 // The keyless API rate-limits per IP, so back off and retry on 429 instead of failing an audit.
 async function getJson(url, attempt = 0) {
-  const res = await fetch(url, { headers: HEADERS });
+  const res = await spaced(() => fetch(url, { headers: HEADERS }));
   if (res.status === 429 && attempt < RETRY_DELAYS_MS.length) {
     await sleep(RETRY_DELAYS_MS[attempt]);
     return getJson(url, attempt + 1);
