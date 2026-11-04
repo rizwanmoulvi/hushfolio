@@ -35,7 +35,7 @@ export class Zingo {
   // zingo-cli prints balances as "key: value" lines, not JSON.
   async balance() {
     const raw = await this.call('balance', [], { net: 'offline' });
-    return Object.fromEntries([...String(raw).matchAll(/(\w+): (\d+)/g)].map(([, k, v]) => [k, Number(v)]));
+    return Object.fromEntries([...String(raw).matchAll(/(\w+): ([\d_]+)/g)].map(([, k, v]) => [k, Number(v.replaceAll('_', ''))]));
   }
 
   // Every Hushfolio memo this wallet sent or received, after a full sync.

@@ -19,6 +19,12 @@ export class Prices {
     return quote;
   }
 
+  // Spot USD price of any CoinGecko id, e.g. 'bitcoin' for Bitrefill's BTC-priced catalog.
+  async usd(id) {
+    const body = await getJson(`${API}/simple/price?ids=${id}&vs_currencies=usd`);
+    return body[id].usd;
+  }
+
   // Market price of a symbol ('ZEC' or an xStock) closest to a unix time.
   async at(symbol, ts) {
     const id = symbol === 'ZEC' ? ZEC.coingecko : ASSETS[symbol]?.coingecko;

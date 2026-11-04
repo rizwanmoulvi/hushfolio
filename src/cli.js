@@ -5,7 +5,13 @@ import { APP_PORT, VAULT_PORT, VAULT_URL } from './config.js';
 import { Auditor } from './auditor.js';
 import { serve } from './http.js';
 import { Investor } from './investor.js';
+import { Bitrefill } from './bitrefill.js';
+import { GainsSpender } from './spender.js';
 import { Vault } from './vault.js';
+
+try {
+  process.loadEnvFile('.env');
+} catch {}
 
 const WEB_DIR = fileURLToPath(new URL('../web', import.meta.url));
 const print = (x) => console.log(typeof x === 'string' ? x : JSON.stringify(x, null, 2));
@@ -23,11 +29,22 @@ const commands = {
   async app() {
     const investor = new Investor();
     const auditor = new Auditor();
+    const spender = process.env.BITREFILL_API_KEY && new GainsSpender(new Bitrefill(), investor.prices);
     serve(
       APP_PORT,
       {
         'GET /api/account': () => investor.account(),
-        'GET /api/portfolio': () => investor.portfolio(),
+        'GET /api/portfolio': async () => {
+          const portfolio = await investor.portfolio();
+          spender?.onPortfolio(portfolio.positions).catch((err) => console.error('[spender]', err.message));
+          return portfolio;
+        },
+        'GET /api/spend': async () => ({
+          enabled: Boolean(spender),
+          ...(spender ? { ...spender.state(), balance: await spender.bitrefill.balance() } : {}),
+        }),
+        'POST /api/spend/approve': ({ pos }) => spender.approve(pos),
+        'POST /api/spend/decline': ({ pos }) => spender.decline(pos),
         'GET /api/quote': () => investor.prices.spot(),
         'POST /api/buy': ({ sym, zec }) => investor.buy(sym, Number(zec)),
         'POST /api/sell': ({ pos }) => investor.sell(pos),
