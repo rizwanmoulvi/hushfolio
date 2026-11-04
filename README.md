@@ -2,6 +2,8 @@
 
 **Own Apple, Tesla and the S&P 500 without the world, or even your broker, seeing your portfolio. Shielded ZEC in, shielded ZEC out, and one viewing key for your accountant.**
 
+**Demo video:** https://youtu.be/Q6GEWDKTkro
+
 Built at the Free Society Hackathon (Mumbai, 4 Nov 2026) for the **Privacy track**. Runs on Zcash testnet with NU7.
 
 ## The problem
