@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import './env.js';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { APP_PORT, VAULT_PORT, VAULT_URL } from './config.js';
@@ -8,10 +9,6 @@ import { Investor } from './investor.js';
 import { Bitrefill } from './bitrefill.js';
 import { GainsSpender } from './spender.js';
 import { Vault } from './vault.js';
-
-try {
-  process.loadEnvFile('.env');
-} catch {}
 
 // On a public server, actions that move money need the operator's token; reading and auditing stay open.
 const ADMIN_TOKEN = process.env.HF_ADMIN_TOKEN;
