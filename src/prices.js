@@ -1,7 +1,9 @@
+import { setTimeout as sleep } from 'node:timers/promises';
 import { ASSETS, ZEC } from './config.js';
 
 const API = 'https://api.coingecko.com/api/v3';
 const SPOT_TTL_MS = 30_000;
+const RETRY_DELAYS_MS = [2_000, 5_000, 10_000, 20_000];
 
 // USD prices for ZEC and the tracked xStocks, from CoinGecko's keyless API.
 export class Prices {
@@ -49,8 +51,13 @@ export class Prices {
   }
 }
 
-async function getJson(url) {
+// The keyless API rate-limits per IP, so back off and retry on 429 instead of failing an audit.
+async function getJson(url, attempt = 0) {
   const res = await fetch(url, { headers: { accept: 'application/json' } });
+  if (res.status === 429 && attempt < RETRY_DELAYS_MS.length) {
+    await sleep(RETRY_DELAYS_MS[attempt]);
+    return getJson(url, attempt + 1);
+  }
   if (!res.ok) throw new Error(`price feed ${res.status} for ${url}`);
   return res.json();
 }
