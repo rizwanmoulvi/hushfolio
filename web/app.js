@@ -9,12 +9,25 @@ const SNAPSHOT = window.HF_SNAPSHOT;
 const SNAPSHOT_POSTS = { disclose: 'disclose', audit: 'audit' };
 const READ_ONLY = 'This public demo is read-only: trading needs your own wallet and keys. Run Hushfolio locally (see the README).';
 
+// The operator opens the app once with ?key=<token> to unlock trading on a public server.
+const token = operatorToken();
+
 async function api(path, body) {
   if (SNAPSHOT) return snapshot(path, body);
-  const res = await fetch(`/api/${path}`, body ? { method: 'POST', body: JSON.stringify(body) } : {});
+  const res = await fetch(`/api/${path}`, body ? { method: 'POST', body: JSON.stringify({ ...body, token }) } : {});
   const data = await res.json();
   if (!res.ok) throw new Error(data.error);
   return data;
+}
+
+function operatorToken() {
+  try {
+    const key = new URLSearchParams(location.search).get('key');
+    if (key) sessionStorage.setItem('hf-token', key);
+    return sessionStorage.getItem('hf-token') ?? undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 async function snapshot(path, body) {

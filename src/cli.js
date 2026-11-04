@@ -13,6 +13,15 @@ try {
   process.loadEnvFile('.env');
 } catch {}
 
+// On a public server, actions that move money need the operator's token; reading and auditing stay open.
+const ADMIN_TOKEN = process.env.HF_ADMIN_TOKEN;
+const guarded = (fn) => (body) => {
+  if (ADMIN_TOKEN && body.token !== ADMIN_TOKEN) {
+    throw new Error('This public server is read-only for visitors: buying, selling and spending need the operator key.');
+  }
+  return fn(body);
+};
+
 const WEB_DIR = fileURLToPath(new URL('../web', import.meta.url));
 const print = (x) => console.log(typeof x === 'string' ? x : JSON.stringify(x, null, 2));
 
@@ -45,16 +54,17 @@ const commands = {
           enabled: Boolean(spender),
           ...(spender ? { ...spender.state(), balance: await spender.bitrefill.balance() } : {}),
         }),
-        'POST /api/spend/approve': ({ pos }) => spender.approve(pos),
-        'POST /api/spend/decline': ({ pos }) => spender.decline(pos),
-        'POST /api/spend/retry': ({ pos }) => spender.retry(pos),
-        'POST /api/stockback': ({ invoice }) => investor.claimReward(invoice),
+        'POST /api/spend/approve': guarded(({ pos }) => spender.approve(pos)),
+        'POST /api/spend/decline': guarded(({ pos }) => spender.decline(pos)),
+        'POST /api/spend/retry': guarded(({ pos }) => spender.retry(pos)),
+        'POST /api/stockback': guarded(({ invoice }) => investor.claimReward(invoice)),
         'GET /api/quote': () => investor.prices.spot(),
-        'POST /api/buy': ({ sym, zec }) => investor.buy(sym, Number(zec)),
-        'POST /api/sell': ({ pos }) => investor.sell(pos),
+        'POST /api/buy': guarded(({ sym, zec }) => investor.buy(sym, Number(zec))),
+        'POST /api/sell': guarded(({ pos }) => investor.sell(pos)),
         'POST /api/disclose': () => investor.disclose(),
         'GET /api/vault-book': async () => (await fetch(`${VAULT_URL}/vault/book`)).json(),
-        'POST /api/audit': (disclosure) => auditor.audit(disclosure),
+        // Visitors may audit any viewing key, but only against this server's own vault.
+        'POST /api/audit': ({ ufvk, birthday }) => auditor.audit({ ufvk, birthday, vault: VAULT_URL }),
       },
       WEB_DIR,
     );
