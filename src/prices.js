@@ -2,17 +2,29 @@ import { setTimeout as sleep } from 'node:timers/promises';
 import { ASSETS, ZEC } from './config.js';
 
 const API = 'https://api.coingecko.com/api/v3';
-const SPOT_TTL_MS = 30_000;
-const RETRY_DELAYS_MS = [2_000, 5_000, 10_000, 20_000];
+const SPOT_TTL_MS = 60_000;
+const RETRY_DELAYS_MS = [3_000, 10_000];
+// A free CoinGecko demo key lifts the shared per-IP limit that cloud servers hit.
+const HEADERS = {
+  accept: 'application/json',
+  ...(process.env.COINGECKO_API_KEY && { 'x-cg-demo-api-key': process.env.COINGECKO_API_KEY }),
+};
 
 // USD prices for ZEC and the tracked xStocks, from CoinGecko's keyless API.
 export class Prices {
   #spot = { at: 0, quote: null };
+  #inflight = null;
   #history = new Map();
 
   // { ts, ZEC, AAPLX, TSLAX, ... } in USD.
-  async spot() {
-    if (Date.now() - this.#spot.at < SPOT_TTL_MS) return this.#spot.quote;
+  // Concurrent callers share one request: bursts are what trip the keyless rate limit.
+  spot() {
+    if (Date.now() - this.#spot.at < SPOT_TTL_MS) return Promise.resolve(this.#spot.quote);
+    this.#inflight ??= this.#fetchSpot().finally(() => (this.#inflight = null));
+    return this.#inflight;
+  }
+
+  async #fetchSpot() {
     const ids = [ZEC, ...Object.values(ASSETS)].map((a) => a.coingecko).join(',');
     const body = await getJson(`${API}/simple/price?ids=${ids}&vs_currencies=usd`);
     const quote = { ts: Math.floor(Date.now() / 1000), ZEC: body[ZEC.coingecko].usd };
@@ -45,7 +57,9 @@ export class Prices {
     const key = `${id}:${hour}`;
     if (!this.#history.has(key)) {
       const url = `${API}/coins/${id}/market_chart/range?vs_currency=usd&from=${hour - 1800}&to=${hour + 5400}`;
-      this.#history.set(key, (await getJson(url)).prices);
+      // Cache the request itself, so parallel audits share it; drop it if it fails.
+      this.#history.set(key, getJson(url).then((body) => body.prices));
+      this.#history.get(key).catch(() => this.#history.delete(key));
     }
     return this.#history.get(key);
   }
@@ -53,7 +67,7 @@ export class Prices {
 
 // The keyless API rate-limits per IP, so back off and retry on 429 instead of failing an audit.
 async function getJson(url, attempt = 0) {
-  const res = await fetch(url, { headers: { accept: 'application/json' } });
+  const res = await fetch(url, { headers: HEADERS });
   if (res.status === 429 && attempt < RETRY_DELAYS_MS.length) {
     await sleep(RETRY_DELAYS_MS[attempt]);
     return getJson(url, attempt + 1);
