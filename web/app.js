@@ -1,6 +1,7 @@
 const $ = (id) => document.getElementById(id);
 const ZAT = 1e8;
 const usd = (n) => (n == null ? '–' : `$${n.toFixed(2)}`);
+const tx = (id) => `<a href="https://testnet.zcashexplorer.app/transactions/${id}" target="_blank" rel="noopener">${id.slice(0, 10)}…</a>`;
 const signed = (n) => `<span class="${n >= 0 ? 'up' : 'down'}">${n >= 0 ? '+' : '−'}$${Math.abs(n).toFixed(2)}</span>`;
 
 async function api(path, body) {
@@ -42,7 +43,7 @@ async function loadPortfolio() {
     $('positions').innerHTML = positions.length
       ? positions.map(row).join('')
       : '<tr><td colspan="7" class="empty">No positions yet. Your receipts will appear here once the vault fills an order.</td></tr>';
-    $('pending').innerHTML = pending.map((p) => `⧗ ${p.side} ${p.sym} ${p.pos} waiting for the vault (tx ${p.txid.slice(0, 10)}…)`).join('<br>');
+    $('pending').innerHTML = pending.map((p) => `⧗ ${p.side} ${p.sym} ${p.pos} waiting for the vault · tx ${tx(p.txid)}`).join('<br>');
     $('t-value').textContent = usd(totals.valueUsd);
     $('t-unreal').innerHTML = signed(totals.unrealizedUsd);
     $('t-real').innerHTML = `${signed(totals.realizedUsd)}`;
@@ -55,7 +56,7 @@ async function loadPortfolio() {
 function row(p) {
   const open = p.status === 'open';
   return `<tr>
-    <td>${p.pos.slice(0, 10)}…</td>
+    <td>${tx(p.closeTxid ?? p.fillTxid)}</td>
     <td>${p.sym}</td>
     <td>${p.qty.toFixed(6)}</td>
     <td>${usd(p.openPx)}</td>
@@ -89,6 +90,7 @@ $('buy').addEventListener('submit', async (e) => {
   try {
     const { txid } = await api('buy', { sym: form.get('sym'), zec: form.get('zec') });
     button.textContent = `Sent · ${txid.slice(0, 10)}…`;
+    $('pending').innerHTML = `⧗ BUY sent · tx ${tx(txid)}`;
     loadAccount();
     loadPortfolio();
   } catch (err) {

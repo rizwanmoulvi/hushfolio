@@ -71,3 +71,5 @@ td.empty { color: var(--muted); text-align: center; padding: 24px; white-space: 
 .verdict { font: 400 30px 'Instrument Serif', serif; margin: 14px 0 6px; }
 .audit-pos { border-top: 1px solid var(--line); padding: 10px 0; }
 footer { color: var(--muted); font-size: 12px; padding-bottom: 40px; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
