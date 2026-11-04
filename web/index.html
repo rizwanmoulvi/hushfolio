@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hushfolio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif&family=JetBrains+Mono:wght@400;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <div class="brand">
+    <h1>Hushfolio</h1>
+    <p>Stock exposure that settles in shielded ZEC. The world sees nothing, the vault can't tell who you are, and your accountant can still verify every trade.</p>
+  </div>
+  <div class="net"><span class="dot"></span> Zcash testnet · NU7 · traffic over Nym mixnet</div>
+</header>
+
+<nav>
+  <button data-tab="portfolio" class="on">Portfolio</button>
+  <button data-tab="vault">What the vault sees</button>
+  <button data-tab="audit">Accountant</button>
+</nav>
+
+<main>
+  <section id="portfolio" class="tab on">
+    <div class="grid">
+      <div class="card">
+        <h2>Your shielded wallet</h2>
+        <div class="kv"><span>Balance</span><b id="balance">…</b></div>
+        <div class="kv"><span>Address</span><code id="address" class="addr">…</code></div>
+        <p class="hint">Only this machine holds the spending key and the sell secrets.</p>
+      </div>
+      <div class="card">
+        <h2>Buy</h2>
+        <form id="buy">
+          <div class="assets" id="assets"></div>
+          <label>Pay <input name="zec" type="number" step="0.001" min="0.001" value="0.01"> TAZ</label>
+          <button type="submit">Send shielded order</button>
+        </form>
+        <p class="hint">Sent from a shielded note, with a fresh one-time reply address in the encrypted memo.</p>
+      </div>
+      <div class="card totals">
+        <h2>Totals</h2>
+        <div class="kv"><span>Open value</span><b id="t-value">–</b></div>
+        <div class="kv"><span>Unrealized</span><b id="t-unreal">–</b></div>
+        <div class="kv"><span>Realized</span><b id="t-real">–</b></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="row"><h2>Positions</h2><span class="sync" id="sync">syncing over Nym…</span></div>
+      <table>
+        <thead><tr><th>Position</th><th>Asset</th><th>Qty</th><th>Entry</th><th>Now / Exit</th><th>P&amp;L</th><th></th></tr></thead>
+        <tbody id="positions"><tr><td colspan="7" class="empty">Scanning your shielded memos…</td></tr></tbody>
+      </table>
+      <div id="pending"></div>
+    </div>
+  </section>
+
+  <section id="vault" class="tab">
+    <div class="card">
+      <h2>The vault's own book</h2>
+      <p class="hint">This is everything the counterparty knows. Each order arrived as a shielded note with no sender, and every reply went to a different one-time address, so it can't link positions to each other or to a person.</p>
+      <table>
+        <thead><tr><th>Position</th><th>Asset</th><th>Qty</th><th>Entry</th><th>Status</th><th>Owner</th></tr></thead>
+        <tbody id="book"></tbody>
+      </table>
+    </div>
+    <div class="card">
+      <h2>Vault log</h2>
+      <pre id="log" class="log"></pre>
+    </div>
+  </section>
+
+  <section id="audit" class="tab">
+    <div class="grid two">
+      <div class="card">
+        <h2>1 · Investor: export a viewing key</h2>
+        <p class="hint">A unified full viewing key reads this wallet's history. It can't spend, and it can't sell positions: the sell secrets never touch the chain.</p>
+        <button id="disclose">Create disclosure</button>
+        <pre id="disclosure" class="log small"></pre>
+      </div>
+      <div class="card">
+        <h2>2 · Accountant: verify</h2>
+        <p class="hint">Loads the key into a view-only wallet, then checks each vault signature, that the receipt's stake matches your shielded BUY, and each fill price against the public market at that minute.</p>
+        <button id="run-audit" disabled>Run audit</button>
+        <div id="report"></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>Prices: CoinGecko xStocks (AAPLX, TSLAX, NVDAX, SPYX) · ZEC/USD applied to TAZ for the demo · Positions are synthetic, held by a custodial vault</footer>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>

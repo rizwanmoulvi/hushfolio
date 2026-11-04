@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { APP_PORT, VAULT_PORT } from './config.js';
+import { APP_PORT, VAULT_PORT, VAULT_URL } from './config.js';
 import { Auditor } from './auditor.js';
 import { serve } from './http.js';
 import { Investor } from './investor.js';
@@ -32,6 +32,7 @@ const commands = {
         'POST /api/buy': ({ sym, zec }) => investor.buy(sym, Number(zec)),
         'POST /api/sell': ({ pos }) => investor.sell(pos),
         'POST /api/disclose': () => investor.disclose(),
+        'GET /api/vault-book': async () => (await fetch(`${VAULT_URL}/vault/book`)).json(),
         'POST /api/audit': (disclosure) => auditor.audit(disclosure),
       },
       WEB_DIR,
